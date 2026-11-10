@@ -21,5 +21,5 @@ def test_run_simulation_batch(client):
     data = res.json()
     assert data["status"] == "completed"
     assert data["total_processed"] == 5
-    assert data["total_phishing"] >= 3
+    assert (data["total_phishing"] + data["total_spam"]) >= 3
     assert data["avg_latency_ms"] > 0

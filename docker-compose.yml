@@ -9,11 +9,38 @@ services:
       - "8088:8088"
     environment:
       - DATABASE_URL=sqlite:///./sms_shield.db
-      - SECRET_KEY=sms-shield-production-super-secret-jwt-key-2026!
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=sms-shield-pro-super-secret-jwt-key-2026!
       - ADMIN_EMAIL=admin@smsshield.io
       - ADMIN_PASSWORD=Admin@Shield2026!
+    depends_on:
+      - redis
     volumes:
       - backend_data:/app
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: sms_shield_celery_worker
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=sqlite:///./sms_shield.db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=sms-shield-pro-super-secret-jwt-key-2026!
+    depends_on:
+      - redis
+      - backend
+    volumes:
+      - backend_data:/app
+
+  redis:
+    image: redis:7-alpine
+    container_name: sms_shield_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
 
   frontend:
     build:

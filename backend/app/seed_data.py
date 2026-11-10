@@ -4,11 +4,13 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     User, Sender, Message, DetectionResult, BlockedSender, AllowedSender,
-    SecurityEvent, SystemSetting
+    SecurityEvent, SystemSetting, Recipient, ConsentRecord, MessageTemplate,
+    AutomationJob, DeliveryEvent
 )
 from app.auth import hash_password
 from app.config import settings
 from app.statistical.stats_analyzer import compute_hash
+from app.utils.sms_counter import calculate_sms_segments
 
 HISTORICAL_MESSAGES = [
     # Phishing
@@ -42,9 +44,38 @@ HISTORICAL_MESSAGES = [
     ("Hi David, the team retrospective meeting is moved to Room 4B at 3:00 PM.", "+12025550171", 3.5, "SAFE", "allowed", [])
 ]
 
+DEFAULT_TEMPLATES = [
+    {
+        "name": "2FA Security OTP (English)",
+        "content": "Your SMS Shield verification security code is 749201. Valid for 10 minutes. Never share this code.",
+        "category": "OTP"
+    },
+    {
+        "name": "Bengali 2FA Verification (বাংলা)",
+        "content": "আপনার এসএমএস শিল্ড ওটিপি (OTP) কোড হল ৭৪৯২০১। নিরাপত্তা নিশ্চিত করতে এই কোড কাউকে জানাবেন না।",
+        "category": "BENGALI_NOTICE"
+    },
+    {
+        "name": "Security Incident Alert",
+        "content": "SECURITY ALERT: Unrecognized login attempt detected. Reply STOP to halt your active sessions immediately.",
+        "category": "SECURITY_ALERT"
+    },
+    {
+        "name": "Bengali Security Warning (বাংলা সতর্কবার্তা)",
+        "content": "সতর্কতা: আপনার একাউন্টে অস্বাভাবিক কার্যকলাপ সনাক্ত করা হয়েছে। অবিলম্বে নিরাপত্তা পোর্টাল যাচাই করুন।",
+        "category": "BENGALI_NOTICE"
+    },
+    {
+        "name": "Transaction Confirmation Notice",
+        "content": "SMS Shield: Transaction #TXN-98421 of $45.00 has been successfully processed for your account.",
+        "category": "TRANSACTIONAL"
+    }
+]
+
 def seed_database(db: Session):
-    """Initializes default settings, admin user, allow/blocklists, and realistic historical demo records."""
-    # 1. Seed Admin & Analyst Users
+    now = datetime.now(timezone.utc)
+
+    # 1. Admin & Analyst Users
     admin_user = db.query(User).filter(User.email == settings.ADMIN_EMAIL).first()
     if not admin_user:
         admin_user = User(
@@ -55,7 +86,6 @@ def seed_database(db: Session):
             is_active=True
         )
         db.add(admin_user)
-        print(f"[Seed] Created default admin: {settings.ADMIN_EMAIL}")
 
     analyst_user = db.query(User).filter(User.email == "analyst@smsshield.io").first()
     if not analyst_user:
@@ -68,7 +98,7 @@ def seed_database(db: Session):
         )
         db.add(analyst_user)
 
-    # 2. Seed System Settings
+    # 2. System Settings
     default_settings = [
         ("emergency_lockdown_mode", "false", "When active, strictly blocks or quarantines messages from unknown senders"),
         ("risk_suspicious_threshold", "40.0", "Threshold at which an SMS is flagged as suspicious"),
@@ -81,7 +111,7 @@ def seed_database(db: Session):
         if not db.query(SystemSetting).filter(SystemSetting.key == key).first():
             db.add(SystemSetting(key=key, value=val, description=desc))
 
-    # 3. Seed Blocked Senders
+    # 3. Blocked Senders
     default_blocked = [
         ("+18005559999", "Automated high-velocity loan spam broadcast bot", "SecOps Automated"),
         ("+18884920192", "Targeted Chase Bank credential phishing vector", "Admin"),
@@ -92,7 +122,7 @@ def seed_database(db: Session):
         if not db.query(BlockedSender).filter(BlockedSender.pattern == pattern).first():
             db.add(BlockedSender(pattern=pattern, reason=reason, blocked_by=by, active=True))
 
-    # 4. Seed Allowed Senders
+    # 4. Allowed Senders
     default_allowed = [
         ("+18005550100", "Verified GitHub Security 2FA Gateway", "Admin"),
         ("+18005550188", "Delta Airlines Dispatch and Flight Notifications", "SecOps"),
@@ -102,14 +132,87 @@ def seed_database(db: Session):
         if not db.query(AllowedSender).filter(AllowedSender.pattern == pattern).first():
             db.add(AllowedSender(pattern=pattern, description=desc, added_by=by, active=True))
 
+    # 5. Templates (English and Bengali)
+    for tmpl in DEFAULT_TEMPLATES:
+        if not db.query(MessageTemplate).filter(MessageTemplate.name == tmpl["name"]).first():
+            seg = calculate_sms_segments(tmpl["content"])
+            db.add(MessageTemplate(
+                name=tmpl["name"],
+                content=tmpl["content"],
+                category=tmpl["category"],
+                is_unicode=seg["is_unicode"],
+                char_count=seg["char_count"],
+                segment_count=seg["segment_count"],
+                created_by="SecOps Lead"
+            ))
+
+    # 6. Default Verified Recipients (Consent Granted)
+    recipients_data = [
+        ("+8801712345678", "Mahbub Alam (Lead Engineer)", "verified", "OPTED_IN", "bn", "Primary authorized engineer endpoint"),
+        ("+12025550143", "SecOps Emergency Phone", "verified", "OPTED_IN", "en", "Incident escalation channel"),
+        ("+8801812345679", "Tanvir Ahmed (QA Tester)", "unverified", "PENDING", "bn", "Pending authorized OTP verification")
+    ]
+    for phone, name, v_status, c_status, lang, notes in recipients_data:
+        if not db.query(Recipient).filter(Recipient.phone_number == phone).first():
+            rec = Recipient(
+                phone_number=phone,
+                name=name,
+                verification_status=v_status,
+                consent_status=c_status,
+                preferred_language=lang,
+                consent_date=now if c_status == "OPTED_IN" else None,
+                notes=notes
+            )
+            db.add(rec)
+            db.flush()
+
+            db.add(ConsentRecord(
+                recipient_id=rec.id,
+                action="INITIAL_SEED_CONSENT",
+                method="ADMIN_INITIALIZED",
+                details=f"Initial consent setup with status {c_status}",
+                timestamp=now
+            ))
+
     db.commit()
 
-    # 5. Seed Historical Demo Messages across past 7 days if empty
-    msg_count = db.query(Message).count()
-    if msg_count < 10:
-        print("[Seed] Populating realistic historical SMS demo traffic...")
-        now = datetime.now(timezone.utc)
-        
+    # 7. Seed Sample Automation Job if none exists
+    if db.query(AutomationJob).count() == 0:
+        first_recipient = db.query(Recipient).filter(Recipient.consent_status == "OPTED_IN").first()
+        first_template = db.query(MessageTemplate).filter(MessageTemplate.category == "BENGALI_NOTICE").first()
+        if first_recipient and first_template:
+            job = AutomationJob(
+                name="Security Notice Dispatch (Dhaka Ops)",
+                recipient_id=first_recipient.id,
+                template_id=first_template.id,
+                target_count=3,
+                sent_count=1,
+                failed_count=0,
+                interval_seconds=15.0,
+                status="RUNNING",
+                execution_mode="MOCK_GATEWAY",
+                provider_rate_limit_per_min=10,
+                created_by="admin@smsshield.io"
+            )
+            db.add(job)
+            db.flush()
+
+            # Add sample delivery event
+            db.add(DeliveryEvent(
+                job_id=job.id,
+                recipient_phone=first_recipient.phone_number,
+                message_content=first_template.content,
+                provider_message_id="MOCK-SMSC-DEMO9812",
+                delivery_status="SIMULATED_DELIVERED",
+                provider_name="MockCarrierGateway",
+                is_simulated=True,
+                cost_usd=0.0,
+                timestamp=now - timedelta(minutes=5)
+            ))
+            db.commit()
+
+    # 8. Historical Messages if table empty
+    if db.query(Message).count() < 10:
         for idx, (content, sender, risk, level, status, rules) in enumerate(HISTORICAL_MESSAGES):
             days_ago = (idx % 7)
             hours_ago = (idx * 3) % 24
@@ -164,7 +267,6 @@ def seed_database(db: Session):
             )
             db.add(det)
 
-            # Security Events for threats
             if risk >= 75.0:
                 sec_ev = SecurityEvent(
                     event_type="PHISHING_CAMPAIGN_INTERCEPT" if "phishing" in level.lower() else "MALICIOUS_SMS_FLAGGED",
@@ -179,4 +281,3 @@ def seed_database(db: Session):
                 db.add(sec_ev)
 
         db.commit()
-        print(f"[Seed] Successfully seeded {len(HISTORICAL_MESSAGES)} historical records.")

@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  SendHorizontal,
+  CalendarClock,
   FlaskConical,
   Scan,
   ShieldCheck,
@@ -19,20 +21,50 @@ interface SidebarProps {
   emergencyMode: boolean;
 }
 
+interface NavItem {
+  id: string;
+  label: string;
+  icon: any;
+  badge?: string;
+  isLive?: boolean;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   emergencyMode
 }) => {
-  const navItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'testing-lab', label: 'SMS Testing Lab', icon: FlaskConical },
-    { id: 'detection', label: 'Spam Detection', icon: Scan },
-    { id: 'protection', label: 'Protection Center', icon: ShieldCheck },
-    { id: 'threat-monitoring', label: 'Threat Monitoring', icon: Activity },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'settings', label: 'Settings', icon: Settings },
+  const navSections: NavSection[] = [
+    {
+      title: 'Operations',
+      items: [
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'automation-center', label: 'SMS Automation Center', icon: SendHorizontal, badge: 'PRO' },
+        { id: 'automation-scheduler', label: 'Automation Scheduler', icon: CalendarClock },
+        { id: 'testing-lab', label: 'SMS Testing Lab', icon: FlaskConical },
+      ]
+    },
+    {
+      title: 'Cybersecurity Defense',
+      items: [
+        { id: 'detection', label: 'Spam Detection', icon: Scan },
+        { id: 'protection', label: 'Protection Center', icon: ShieldCheck },
+        { id: 'threat-monitoring', label: 'Threat Monitoring', icon: Activity, isLive: true },
+      ]
+    },
+    {
+      title: 'Intelligence & Admin',
+      items: [
+        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+        { id: 'reports', label: 'Reports', icon: FileText },
+        { id: 'settings', label: 'Settings', icon: Settings },
+      ]
+    }
   ];
 
   return (
@@ -55,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <h1 className="font-bold text-base tracking-wider text-white">SMS SHIELD</h1>
             <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/50">PRO</span>
           </div>
-          <p className="text-[11px] text-slate-400">Threat Defense & AI Lab</p>
+          <p className="text-[11px] text-slate-400">Cybersecurity & Automation</p>
         </div>
       </div>
 
@@ -67,35 +99,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* Navigation Links */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-          Core Operations
-        </div>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-left ${
-                isActive
-                  ? 'bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent text-cyan-300 border-l-2 border-cyan-400 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
-            >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
-              <span>{item.label}</span>
-              {item.id === 'threat-monitoring' && (
-                <span className="ml-auto flex items-center gap-1 text-[10px] text-rose-400 bg-rose-950/50 px-1.5 py-0.5 rounded border border-rose-800/30 font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                  LIVE
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* Navigation Links Grouped by Section */}
+      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+        {navSections.map((section, sIdx) => (
+          <div key={sIdx} className="space-y-1">
+            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              {section.title}
+            </div>
+            {section.items.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium transition-all duration-150 text-left ${
+                    isActive
+                      ? 'bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-transparent text-cyan-300 border-l-2 border-cyan-400 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                  <span className="truncate">{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/40 font-bold">
+                      {item.badge}
+                    </span>
+                  )}
+                  {item.isLive && (
+                    <span className="ml-auto flex items-center gap-1 text-[10px] text-rose-400 bg-rose-950/50 px-1.5 py-0.5 rounded border border-rose-800/30 font-mono">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                      LIVE
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Security Status Footprint */}
@@ -104,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-slate-400 flex items-center gap-1.5">
               <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              Engine Status
+              Engine & Worker
             </span>
             <span className="text-emerald-400 font-mono text-[11px] font-semibold">ONLINE</span>
           </div>
@@ -113,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <p className="text-[10px] text-slate-500 mt-1.5 flex justify-between">
             <span>Accuracy: 98.7%</span>
-            <span>v1.0.0</span>
+            <span>v1.2.0 PRO</span>
           </p>
         </div>
       </div>

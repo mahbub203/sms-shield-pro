@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { Sidebar } from './components/Layout/Sidebar';
 import { Header } from './components/Layout/Header';
 import { LoginModal } from './components/Auth/LoginModal';
 
 import { DashboardView } from './components/Dashboard/DashboardView';
+import { AutomationCenterView } from './components/AutomationCenter/AutomationCenterView';
+import { SchedulerView } from './components/AutomationScheduler/SchedulerView';
 import { SimulationLabView } from './components/SimulationLab/SimulationLabView';
 import { DetectionView } from './components/DetectionEngine/DetectionView';
 import { ProtectionView } from './components/ProtectionCenter/ProtectionView';
@@ -44,6 +46,10 @@ const MainApp: React.FC = () => {
     switch (activeTab) {
       case 'overview':
         return <DashboardView onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'automation-center':
+        return <AutomationCenterView />;
+      case 'automation-scheduler':
+        return <SchedulerView />;
       case 'testing-lab':
         return <SimulationLabView />;
       case 'detection':

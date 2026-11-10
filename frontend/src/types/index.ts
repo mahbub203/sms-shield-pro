@@ -189,3 +189,89 @@ export interface SystemSetting {
   description?: string;
   updated_at: string;
 }
+
+// ================= AUTOMATION & RECIPIENTS =================
+
+export interface Recipient {
+  id: number;
+  phone_number: string;
+  name: string;
+  verification_status: 'unverified' | 'verified' | 'failed';
+  consent_status: 'PENDING' | 'OPTED_IN' | 'REVOKED';
+  consent_date?: string;
+  preferred_language: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface MessageTemplate {
+  id: number;
+  name: string;
+  content: string;
+  category: string;
+  is_unicode: boolean;
+  char_count: number;
+  segment_count: number;
+  created_by: string;
+  created_at: string;
+}
+
+export interface UnicodeInspectResult {
+  char_count: number;
+  encoding: string;
+  is_unicode: boolean;
+  is_bengali: boolean;
+  segment_count: number;
+  max_per_segment: number;
+  remaining_in_segment: number;
+}
+
+export interface AutomationJob {
+  id: number;
+  name: string;
+  recipient_id: number;
+  template_id?: number;
+  custom_message?: string;
+  target_count: number;
+  sent_count: number;
+  failed_count: number;
+  interval_seconds: number;
+  status: 'PENDING' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+  execution_mode: 'MOCK_GATEWAY' | 'PROVIDER_SANDBOX' | 'AUTHORIZED_LIVE';
+  provider_rate_limit_per_min: number;
+  scheduled_at?: string;
+  last_run_at?: string;
+  next_run_at?: string;
+  created_by: string;
+  created_at: string;
+  recipient_rel?: Recipient;
+  template_rel?: MessageTemplate;
+}
+
+export interface DeliveryEvent {
+  id: number;
+  job_id?: number;
+  recipient_phone: string;
+  message_content: string;
+  provider_message_id: string;
+  delivery_status: 'SIMULATED_DELIVERED' | 'PROVIDER_CONFIRMED' | 'FAILED' | 'UNDELIVERED';
+  provider_name: string;
+  is_simulated: boolean;
+  cost_usd: number;
+  error_code?: string;
+  timestamp: string;
+}
+
+export interface AutomationStats {
+  total_jobs: number;
+  active_jobs: number;
+  completed_jobs: number;
+  paused_jobs: number;
+  failed_jobs: number;
+  total_simulated_delivered: number;
+  total_provider_confirmed: number;
+  total_delivery_failures: number;
+  last_execution_time?: string;
+  worker_status: string;
+  emergency_lockdown_active: boolean;
+}

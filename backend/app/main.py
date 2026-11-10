@@ -8,15 +8,17 @@ from app.config import settings
 from app.database import engine, Base, SessionLocal
 from app.seed_data import seed_database
 from app.ml.detector import ml_detector
+from app.scheduler.job_runner import job_scheduler
 
 from app.routers import (
     auth, dashboard, detection, simulation,
-    protection, threats, analytics, reports, settings as settings_router
+    protection, threats, analytics, reports, settings as settings_router,
+    automation, scheduler
 )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize Database Schema
+    # Initialize Database Schema (creates new tables)
     Base.metadata.create_all(bind=engine)
     
     # Run Seeds
@@ -28,15 +30,19 @@ async def lifespan(app: FastAPI):
 
     # Preload and verify ML Model
     ml_detector.get_metrics()
-    print("[SMS Shield] Core defense engine and ML models initialized successfully.")
+    
+    # Start SMS Automation Scheduler Daemon
+    job_scheduler.start()
+    print("[SMS Shield Pro] Core defense engine, automation scheduler, and ML models initialized successfully.")
     
     yield
-    print("[SMS Shield] Shutting down cleanly.")
+    job_scheduler.stop()
+    print("[SMS Shield Pro] Shutting down cleanly.")
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title=f"{settings.PROJECT_NAME} PRO",
     version=settings.VERSION,
-    description="Enterprise-grade Intelligent SMS Security, Spam Detection & Protection Platform",
+    description="Intelligent SMS Security, Automation, Spam Detection & Threat Defense Platform",
     lifespan=lifespan
 )
 
@@ -51,6 +57,8 @@ app.add_middleware(
 
 # API V1 Router Inclusions
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
+app.include_router(automation.router, prefix=settings.API_V1_PREFIX)
+app.include_router(scheduler.router, prefix=settings.API_V1_PREFIX)
 app.include_router(dashboard.router, prefix=settings.API_V1_PREFIX)
 app.include_router(detection.router, prefix=settings.API_V1_PREFIX)
 app.include_router(simulation.router, prefix=settings.API_V1_PREFIX)
@@ -64,15 +72,16 @@ app.include_router(settings_router.router, prefix=settings.API_V1_PREFIX)
 def health_check():
     return {
         "status": "healthy",
-        "service": settings.PROJECT_NAME,
+        "service": f"{settings.PROJECT_NAME} PRO",
         "version": settings.VERSION,
-        "mode": "ACTIVE_DEFENSE"
+        "mode": "ACTIVE_DEFENSE",
+        "scheduler_status": job_scheduler.worker_status
     }
 
 @app.get("/")
 def root():
     return {
-        "name": settings.PROJECT_NAME,
+        "name": f"{settings.PROJECT_NAME} PRO",
         "status": "online",
         "docs_url": "/docs",
         "api_prefix": settings.API_V1_PREFIX

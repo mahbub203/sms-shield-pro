@@ -2,7 +2,8 @@ import {
   AuthResponse, DashboardMetrics, ThreatTimelineItem, RiskDistributionItem,
   DetectionResult, MessageItem, MLMetrics, SimulationScenario, SimulationSession,
   BlockedSender, AllowedSender, ProtectionStatus, SecurityEvent, AnalyticsOverview,
-  SenderAnalytics, SystemSetting
+  SenderAnalytics, SystemSetting, Recipient, MessageTemplate, UnicodeInspectResult,
+  AutomationJob, DeliveryEvent, AutomationStats
 } from '../types';
 
 const BASE_URL = '/api/v1';
@@ -68,6 +69,158 @@ export const api = {
       headers: getAuthHeaders()
     });
     return handleResponse<SecurityEvent[]>(res);
+  },
+
+  // Automation Center: Recipients
+  async getRecipients(): Promise<Recipient[]> {
+    const res = await fetch(`${BASE_URL}/automation/recipients`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse<Recipient[]>(res);
+  },
+
+  async addRecipient(phone_number: string, name: string, preferred_language: string = 'bn', notes?: string): Promise<Recipient> {
+    const res = await fetch(`${BASE_URL}/automation/recipients`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ phone_number, name, preferred_language, notes })
+    });
+    return handleResponse<Recipient>(res);
+  },
+
+  async verifyRecipient(id: number, code: string): Promise<Recipient> {
+    const res = await fetch(`${BASE_URL}/automation/recipients/${id}/verify`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ code })
+    });
+    return handleResponse<Recipient>(res);
+  },
+
+  async updateConsent(id: number, consent_status: string): Promise<Recipient> {
+    const res = await fetch(`${BASE_URL}/automation/recipients/${id}/consent`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ consent_status })
+    });
+    return handleResponse<Recipient>(res);
+  },
+
+  async deleteRecipient(id: number): Promise<void> {
+    const res = await fetch(`${BASE_URL}/automation/recipients/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    await handleResponse(res);
+  },
+
+  // Automation Center: Templates & Unicode
+  async getTemplates(): Promise<MessageTemplate[]> {
+    const res = await fetch(`${BASE_URL}/automation/templates`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse<MessageTemplate[]>(res);
+  },
+
+  async createTemplate(name: string, content: string, category: string): Promise<MessageTemplate> {
+    const res = await fetch(`${BASE_URL}/automation/templates`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ name, content, category })
+    });
+    return handleResponse<MessageTemplate>(res);
+  },
+
+  async deleteTemplate(id: number): Promise<void> {
+    const res = await fetch(`${BASE_URL}/automation/templates/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    await handleResponse(res);
+  },
+
+  async inspectUnicode(text: string): Promise<UnicodeInspectResult> {
+    const res = await fetch(`${BASE_URL}/automation/templates/inspect-unicode`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ text })
+    });
+    return handleResponse<UnicodeInspectResult>(res);
+  },
+
+  // Automation Jobs
+  async getAutomationJobs(): Promise<AutomationJob[]> {
+    const res = await fetch(`${BASE_URL}/automation/jobs`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse<AutomationJob[]>(res);
+  },
+
+  async createAutomationJob(payload: {
+    name: string;
+    recipient_id: number;
+    template_id?: number;
+    custom_message?: string;
+    target_count: number;
+    interval_seconds: number;
+    execution_mode: string;
+    provider_rate_limit_per_min?: number;
+  }): Promise<AutomationJob> {
+    const res = await fetch(`${BASE_URL}/automation/jobs`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    return handleResponse<AutomationJob>(res);
+  },
+
+  async startJob(id: number): Promise<void> {
+    const res = await fetch(`${BASE_URL}/automation/jobs/${id}/start`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    await handleResponse(res);
+  },
+
+  async pauseJob(id: number): Promise<void> {
+    const res = await fetch(`${BASE_URL}/automation/jobs/${id}/pause`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    await handleResponse(res);
+  },
+
+  async resumeJob(id: number): Promise<void> {
+    const res = await fetch(`${BASE_URL}/automation/jobs/${id}/resume`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    await handleResponse(res);
+  },
+
+  async cancelJob(id: number): Promise<void> {
+    const res = await fetch(`${BASE_URL}/automation/jobs/${id}/cancel`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    await handleResponse(res);
+  },
+
+  // Scheduler & Telemetry
+  async getSchedulerStats(): Promise<AutomationStats> {
+    const res = await fetch(`${BASE_URL}/scheduler/stats`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse<AutomationStats>(res);
+  },
+
+  async getDeliveries(limit: number = 50, status?: string): Promise<DeliveryEvent[]> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (status && status !== 'ALL') params.append('status', status);
+    const res = await fetch(`${BASE_URL}/scheduler/deliveries?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse<DeliveryEvent[]>(res);
   },
 
   // Detection Engine

@@ -382,6 +382,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateTab }) =
 
           <div className="space-y-2.5">
             <button
+              onClick={() => onNavigateTab('automation-center')}
+              className="w-full p-3 rounded-lg bg-navy-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all group flex items-start justify-between"
+            >
+              <div>
+                <p className="text-xs font-semibold text-white group-hover:text-cyan-300 transition-colors">
+                  SMS Automation Center & Recipient Registry
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Verify recipient consent, compose Bengali/Unicode SMS, and configure jobs
+                </p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+            </button>
+
+            <button
+              onClick={() => onNavigateTab('automation-scheduler')}
+              className="w-full p-3 rounded-lg bg-navy-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all group flex items-start justify-between"
+            >
+              <div>
+                <p className="text-xs font-semibold text-white group-hover:text-cyan-300 transition-colors">
+                  Automation Scheduler & Delivery Telemetry
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Monitor active jobs, cloud worker health, and carrier receipts
+                </p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+            </button>
+
+            <button
               onClick={() => onNavigateTab('testing-lab')}
               className="w-full p-3 rounded-lg bg-navy-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all group flex items-start justify-between"
             >

@@ -75,7 +75,7 @@ class MessageOut(BaseModel):
 # ----------------- Simulation -----------------
 class SimulationStartRequest(BaseModel):
     name: str = Field(default="Security Test Run 1")
-    scenario: str = Field(default="mixed") # normal, bank_phishing, delivery_scam, urgent_wire, bulk_burst, mixed
+    scenario: str = Field(default="mixed")
     message_count: int = Field(default=15, ge=1, le=200)
     frequency_per_sec: float = Field(default=2.0, ge=0.5, le=20.0)
 
@@ -189,3 +189,123 @@ class SystemSettingOut(BaseModel):
 
 class SystemSettingUpdate(BaseModel):
     value: str
+
+# ==================== NEW AUTOMATION SCHEMAS ====================
+
+class RecipientCreate(BaseModel):
+    phone_number: str = Field(..., description="E.164 phone number e.g. +8801712345678")
+    name: str = Field(..., description="Recipient display name e.g. Mahbub Alam")
+    preferred_language: str = Field(default="bn", description="en or bn")
+    notes: Optional[str] = None
+
+class RecipientVerifyRequest(BaseModel):
+    code: str = Field(..., description="OTP verification token")
+
+class ConsentUpdate(BaseModel):
+    consent_status: str = Field(..., description="OPTED_IN or REVOKED")
+    method: Optional[str] = "ADMIN_CONSOLE"
+
+class RecipientOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    phone_number: str
+    name: str
+    verification_status: str
+    consent_status: str
+    consent_date: Optional[datetime] = None
+    preferred_language: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+class MessageTemplateCreate(BaseModel):
+    name: str
+    content: str
+    category: str = "TRANSACTIONAL"
+
+class MessageTemplateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    content: str
+    category: str
+    is_unicode: bool
+    char_count: int
+    segment_count: int
+    created_by: str
+    created_at: datetime
+
+class UnicodeInspectRequest(BaseModel):
+    text: str
+
+class UnicodeInspectResponse(BaseModel):
+    char_count: int
+    encoding: str
+    is_unicode: bool
+    is_bengali: bool
+    segment_count: int
+    max_per_segment: int
+    remaining_in_segment: int
+
+class AutomationJobCreate(BaseModel):
+    name: str
+    recipient_id: int
+    template_id: Optional[int] = None
+    custom_message: Optional[str] = None
+    target_count: int = Field(default=1, ge=1, le=50, description="Permitted test quantity")
+    interval_seconds: float = Field(default=10.0, ge=1.0, le=3600.0)
+    execution_mode: str = Field(default="MOCK_GATEWAY", description="MOCK_GATEWAY, PROVIDER_SANDBOX, AUTHORIZED_LIVE")
+    provider_rate_limit_per_min: int = Field(default=10, ge=1, le=60)
+    scheduled_at: Optional[datetime] = None
+
+class AutomationJobOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    recipient_id: int
+    template_id: Optional[int] = None
+    custom_message: Optional[str] = None
+    target_count: int
+    sent_count: int
+    failed_count: int
+    interval_seconds: float
+    status: str
+    execution_mode: str
+    provider_rate_limit_per_min: int
+    scheduled_at: Optional[datetime] = None
+    last_run_at: Optional[datetime] = None
+    next_run_at: Optional[datetime] = None
+    created_by: str
+    created_at: datetime
+    recipient_rel: Optional[RecipientOut] = None
+    template_rel: Optional[MessageTemplateOut] = None
+
+class DeliveryEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    job_id: Optional[int] = None
+    recipient_phone: str
+    message_content: str
+    provider_message_id: str
+    delivery_status: str
+    provider_name: str
+    is_simulated: bool
+    cost_usd: float
+    error_code: Optional[str] = None
+    timestamp: datetime
+
+class AutomationStatsOut(BaseModel):
+    total_jobs: int
+    active_jobs: int
+    completed_jobs: int
+    paused_jobs: int
+    failed_jobs: int
+    total_simulated_delivered: int
+    total_provider_confirmed: int
+    total_delivery_failures: int
+    last_execution_time: Optional[datetime] = None
+    worker_status: str
+    emergency_lockdown_active: bool
