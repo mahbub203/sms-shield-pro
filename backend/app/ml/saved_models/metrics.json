@@ -1,0 +1,23 @@
+{
+  "model_name": "LogisticRegression (Primary) + MultinomialNB (Ensemble)",
+  "accuracy": 0.9873,
+  "precision": 1.0,
+  "recall": 0.9737,
+  "f1_score": 0.9867,
+  "confusion_matrix": [
+    [
+      122,
+      0
+    ],
+    [
+      3,
+      111
+    ]
+  ],
+  "nb_accuracy": 1.0,
+  "nb_f1_score": 1.0,
+  "dataset_size": 941,
+  "train_samples": 705,
+  "test_samples": 236,
+  "training_timestamp": "2026-11-10T07:37:17.005114Z"
+}

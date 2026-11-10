@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: sms_shield_backend
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      - DATABASE_URL=sqlite:///./sms_shield.db
+      - SECRET_KEY=sms-shield-production-super-secret-jwt-key-2026!
+      - ADMIN_EMAIL=admin@smsshield.io
+      - ADMIN_PASSWORD=Admin@Shield2026!
+    volumes:
+      - backend_data:/app
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: sms_shield_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend_data:
