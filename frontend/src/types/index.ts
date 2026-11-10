@@ -236,8 +236,8 @@ export interface AutomationJob {
   sent_count: number;
   failed_count: number;
   interval_seconds: number;
-  status: 'PENDING' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
-  execution_mode: 'MOCK_GATEWAY' | 'PROVIDER_SANDBOX' | 'AUTHORIZED_LIVE';
+  status: 'PENDING' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | 'FAILED' | 'STOPPED';
+  execution_mode: 'SIMULATION_ENGINE' | 'MOCK_GATEWAY' | 'PROVIDER_SANDBOX' | 'AUTHORIZED_LIVE';
   provider_rate_limit_per_min: number;
   scheduled_at?: string;
   last_run_at?: string;
@@ -254,7 +254,7 @@ export interface DeliveryEvent {
   recipient_phone: string;
   message_content: string;
   provider_message_id: string;
-  delivery_status: 'SIMULATED_DELIVERED' | 'PROVIDER_CONFIRMED' | 'FAILED' | 'UNDELIVERED';
+  delivery_status: 'SIMULATED_DELIVERED' | 'PROVIDER_CONFIRMED' | 'FAILED' | 'UNDELIVERED' | 'RATE_LIMITED';
   provider_name: string;
   is_simulated: boolean;
   cost_usd: number;
@@ -274,4 +274,15 @@ export interface AutomationStats {
   last_execution_time?: string;
   worker_status: string;
   emergency_lockdown_active: boolean;
+  current_throughput_per_sec?: number;
+}
+
+export interface WorkerHealth {
+  status: string;
+  uptime_seconds: number;
+  total_ticks_executed: number;
+  current_throughput_per_sec: number;
+  active_jobs_count: number;
+  is_thread_alive: boolean;
+  queue_depth: number;
 }

@@ -382,6 +382,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateTab }) =
 
           <div className="space-y-2.5">
             <button
+              onClick={() => onNavigateTab('advanced-console')}
+              className="w-full p-3 rounded-lg bg-navy-950 hover:bg-slate-800/80 border border-cyan-800/60 hover:border-cyan-500/50 text-left transition-all group flex items-start justify-between shadow-sm"
+            >
+              <div>
+                <p className="text-xs font-semibold text-cyan-400 group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  Advanced Automation Console (Mode A/B)
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  High-throughput simulation engine, pacing interval controls & live activity counter
+                </p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-cyan-400 transition-colors" />
+            </button>
+
+            <button
               onClick={() => onNavigateTab('automation-center')}
               className="w-full p-3 rounded-lg bg-navy-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all group flex items-start justify-between"
             >

@@ -105,6 +105,89 @@ def test_create_and_manage_automation_job(client, db):
     assert cancel_res.status_code == 200
     assert cancel_res.json()["status"] == "cancelled"
 
+def test_stop_job_endpoint(client, db):
+    from app.models import Recipient
+    rec = db.query(Recipient).filter(Recipient.consent_status == "OPTED_IN").first()
+    res = client.post(
+        "/api/v1/automation/jobs",
+        json={
+            "name": "Stop Control Verification Job",
+            "recipient_id": rec.id,
+            "custom_message": "Testing stop button.",
+            "target_count": 5,
+            "interval_seconds": 1.0,
+            "execution_mode": "SIMULATION_ENGINE"
+        }
+    )
+    assert res.status_code == 200
+    job_id = res.json()["id"]
+
+    # Start job
+    client.post(f"/api/v1/automation/jobs/{job_id}/start")
+
+    # Stop job
+    stop_res = client.post(f"/api/v1/automation/jobs/{job_id}/stop")
+    assert stop_res.status_code == 200
+    assert stop_res.json()["status"] == "stopped"
+
+def test_simulation_engine_quick_dispatch(client):
+    res = client.post(
+        "/api/v1/automation/jobs/quick-dispatch",
+        json={
+            "name": "Rapid Simulation Load Test",
+            "recipient_phone": "+12025550188",
+            "custom_message": "Synthetic stress-test payload.",
+            "target_count": 10,
+            "interval_seconds": 0.1,
+            "execution_mode": "SIMULATION_ENGINE"
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] in ["dispatched", "scheduled"]
+    assert data["job"]["execution_mode"] == "SIMULATION_ENGINE"
+
+def test_authorized_live_quota_safeguard(client, db):
+    from app.models import Recipient
+    rec = db.query(Recipient).filter(Recipient.consent_status == "OPTED_IN").first()
+    res = client.post(
+        "/api/v1/automation/jobs",
+        json={
+            "name": "Excessive Quota Test",
+            "recipient_id": rec.id,
+            "custom_message": "Authorized alert.",
+            "target_count": 500,  # Exceeds 50 limit for live provider
+            "interval_seconds": 5.0,
+            "execution_mode": "AUTHORIZED_LIVE"
+        }
+    )
+    assert res.status_code == 400
+    assert "test quota is limited to 50 SMS" in res.json()["detail"]
+
+def test_worker_health_and_controls(client):
+    # Health check
+    health_res = client.get("/api/v1/scheduler/worker/health")
+    assert health_res.status_code == 200
+    health_data = health_res.json()
+    assert "status" in health_data
+    assert "uptime_seconds" in health_data
+    assert "current_throughput_per_sec" in health_data
+
+    # Pause worker
+    pause_res = client.post("/api/v1/scheduler/worker/pause")
+    assert pause_res.status_code == 200
+    assert pause_res.json()["worker_status"] == "PAUSED"
+
+    # Resume worker
+    resume_res = client.post("/api/v1/scheduler/worker/resume")
+    assert resume_res.status_code == 200
+    assert resume_res.json()["worker_status"] == "HEALTHY_ACTIVE"
+
+    # Restart worker
+    restart_res = client.post("/api/v1/scheduler/worker/restart")
+    assert restart_res.status_code == 200
+    assert restart_res.json()["status"] == "restarted"
+
 def test_emergency_mode_halts_outbound_delivery(client, db):
     from app.models import Recipient, AutomationJob
     # Enable emergency mode

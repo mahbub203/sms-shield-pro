@@ -5,6 +5,7 @@ import { Header } from './components/Layout/Header';
 import { LoginModal } from './components/Auth/LoginModal';
 
 import { DashboardView } from './components/Dashboard/DashboardView';
+import { AdvancedConsoleView } from './components/AdvancedConsole/AdvancedConsoleView';
 import { AutomationCenterView } from './components/AutomationCenter/AutomationCenterView';
 import { SchedulerView } from './components/AutomationScheduler/SchedulerView';
 import { SimulationLabView } from './components/SimulationLab/SimulationLabView';
@@ -46,6 +47,8 @@ const MainApp: React.FC = () => {
     switch (activeTab) {
       case 'overview':
         return <DashboardView onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'advanced-console':
+        return <AdvancedConsoleView />;
       case 'automation-center':
         return <AutomationCenterView />;
       case 'automation-scheduler':

@@ -58,7 +58,10 @@ class ExecutionManager:
             db.commit()
             return False, "Target recipient does not exist."
 
-        if recipient.consent_status != "OPTED_IN":
+        is_simulation_mode = job.execution_mode in ["SIMULATION_ENGINE", "MOCK_GATEWAY"]
+
+        # Only require external consent verification for actual carrier/sandbox dispatches
+        if not is_simulation_mode and recipient.consent_status != "OPTED_IN":
             job.status = "FAILED"
             db.commit()
             audit = AuditLog(
@@ -80,10 +83,10 @@ class ExecutionManager:
             content = "Authorized SMS notification from SMS Shield Pro."
 
         # 6. Select Adapter
-        if job.execution_mode == "PROVIDER_SANDBOX":
-            adapter = provider_sandbox
-        elif job.execution_mode == "AUTHORIZED_LIVE":
+        if job.execution_mode in ["AUTHORIZED_LIVE", "AUTHORIZED_GATEWAY"]:
             adapter = live_adapter
+        elif job.execution_mode == "PROVIDER_SANDBOX":
+            adapter = provider_sandbox
         else:
             adapter = mock_gateway
 

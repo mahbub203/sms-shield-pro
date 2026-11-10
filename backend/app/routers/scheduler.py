@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from app.database import get_db
 from app.models import AutomationJob, DeliveryEvent, SystemSetting
-from app.schemas import AutomationStatsOut, DeliveryEventOut
+from app.schemas import AutomationStatsOut, DeliveryEventOut, WorkerHealthOut
 from app.scheduler.job_runner import job_scheduler
 
 router = APIRouter(prefix="/scheduler", tags=["Automation Scheduler & Telemetry"])
@@ -20,12 +20,14 @@ def get_automation_stats(db: Session = Depends(get_db)):
 
     simulated_delivered = db.query(DeliveryEvent).filter(DeliveryEvent.delivery_status == "SIMULATED_DELIVERED").count()
     provider_confirmed = db.query(DeliveryEvent).filter(DeliveryEvent.delivery_status == "PROVIDER_CONFIRMED").count()
-    failures = db.query(DeliveryEvent).filter(DeliveryEvent.delivery_status.in_(["FAILED", "UNDELIVERED"])).count()
+    failures = db.query(DeliveryEvent).filter(DeliveryEvent.delivery_status.in_(["FAILED", "UNDELIVERED", "RATE_LIMITED"])).count()
 
     last_event = db.query(DeliveryEvent).order_by(DeliveryEvent.timestamp.desc()).first()
 
     emergency_setting = db.query(SystemSetting).filter(SystemSetting.key == "emergency_lockdown_mode").first()
     emergency_active = emergency_setting.value.lower() == "true" if emergency_setting else False
+
+    throughput = job_scheduler.get_throughput()
 
     return AutomationStatsOut(
         total_jobs=total_jobs,
@@ -38,8 +40,28 @@ def get_automation_stats(db: Session = Depends(get_db)):
         total_delivery_failures=failures,
         last_execution_time=last_event.timestamp if last_event else None,
         worker_status=job_scheduler.worker_status,
-        emergency_lockdown_active=emergency_active
+        emergency_lockdown_active=emergency_active,
+        current_throughput_per_sec=throughput
     )
+
+@router.get("/worker/health", response_model=WorkerHealthOut)
+def get_worker_health(db: Session = Depends(get_db)):
+    return job_scheduler.get_worker_health(db)
+
+@router.post("/worker/restart")
+def restart_worker():
+    job_scheduler.restart_worker()
+    return {"status": "restarted", "worker_status": job_scheduler.worker_status}
+
+@router.post("/worker/pause")
+def pause_worker():
+    job_scheduler.pause_worker()
+    return {"status": "paused", "worker_status": job_scheduler.worker_status}
+
+@router.post("/worker/resume")
+def resume_worker():
+    job_scheduler.resume_worker()
+    return {"status": "resumed", "worker_status": job_scheduler.worker_status}
 
 @router.get("/deliveries", response_model=List[DeliveryEventOut])
 def get_deliveries(

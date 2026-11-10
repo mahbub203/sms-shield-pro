@@ -179,20 +179,54 @@ def get_jobs(db: Session = Depends(get_db)):
 
 @router.post("/jobs", response_model=AutomationJobOut)
 def create_automation_job(payload: AutomationJobCreate, db: Session = Depends(get_db)):
-    recipient = db.query(Recipient).filter(Recipient.id == payload.recipient_id).first()
-    if not recipient:
-        raise HTTPException(status_code=400, detail="Invalid recipient ID.")
+    recipient = None
+    if payload.recipient_id:
+        recipient = db.query(Recipient).filter(Recipient.id == payload.recipient_id).first()
+    elif payload.recipient_phone:
+        cleaned_phone = payload.recipient_phone.strip().replace(" ", "").replace("-", "")
+        if not PHONE_REGEX.match(cleaned_phone):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid phone number format. Must follow international E.164 standard (e.g. +8801712345678 or +12025550143)."
+            )
+        recipient = db.query(Recipient).filter(Recipient.phone_number == cleaned_phone).first()
+        if not recipient:
+            now = datetime.datetime.now(datetime.timezone.utc)
+            is_sim = payload.execution_mode in ["SIMULATION_ENGINE", "MOCK_GATEWAY"]
+            recipient = Recipient(
+                phone_number=cleaned_phone,
+                name=payload.recipient_name or f"Target {cleaned_phone[-4:]}",
+                verification_status="verified" if is_sim else "unverified",
+                consent_status="OPTED_IN" if is_sim else "PENDING",
+                preferred_language="bn" if any(ord(c) >= 0x0980 and ord(c) <= 0x09FF for c in (payload.custom_message or "")) else "en",
+                notes="Created via Advanced Automation Console",
+                created_at=now
+            )
+            db.add(recipient)
+            db.commit()
+            db.refresh(recipient)
 
-    if recipient.consent_status != "OPTED_IN":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot schedule automation for recipient without verified consent (Status: {recipient.consent_status})."
-        )
+    if not recipient:
+        raise HTTPException(status_code=400, detail="A valid recipient ID or recipient phone number is required.")
+
+    is_sim_mode = payload.execution_mode in ["SIMULATION_ENGINE", "MOCK_GATEWAY"]
+
+    if not is_sim_mode:
+        if recipient.consent_status != "OPTED_IN":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot dispatch authorized SMS to recipient without verified consent (Status: {recipient.consent_status}). Verify phone via OTP in Recipient Manager first."
+            )
+        if payload.target_count > 50:
+            raise HTTPException(
+                status_code=400,
+                detail="For authorized live provider dispatch, test quota is limited to 50 SMS to protect billing and carrier quotas. Use Simulation Engine for high-throughput stress testing."
+            )
 
     now = datetime.datetime.now(datetime.timezone.utc)
     job = AutomationJob(
         name=payload.name,
-        recipient_id=payload.recipient_id,
+        recipient_id=recipient.id,
         template_id=payload.template_id,
         custom_message=payload.custom_message,
         target_count=payload.target_count,
@@ -213,12 +247,27 @@ def create_automation_job(payload: AutomationJobCreate, db: Session = Depends(ge
         action="JOB_CREATED",
         resource_type="AutomationJob",
         resource_id=str(job.id),
-        details=f"Automation job '{job.name}' created for {recipient.phone_number} (Target: {job.target_count} SMS, Mode: {job.execution_mode})."
+        details=f"Automation job '{job.name}' created for {recipient.phone_number} (Target: {job.target_count} SMS, Mode: {job.execution_mode}, Interval: {job.interval_seconds}s)."
     )
     db.add(audit)
     db.commit()
 
     return job
+
+@router.post("/jobs/quick-dispatch")
+def quick_dispatch(payload: AutomationJobCreate, db: Session = Depends(get_db)):
+    job = create_automation_job(payload, db)
+    started = job_scheduler.start_job(db, job.id)
+    return {
+        "status": "dispatched" if started else "scheduled",
+        "job": {
+            "id": job.id,
+            "name": job.name,
+            "target_count": job.target_count,
+            "status": "RUNNING" if started else job.status,
+            "execution_mode": job.execution_mode
+        }
+    }
 
 @router.post("/jobs/{job_id}/start")
 def start_job(job_id: int, db: Session = Depends(get_db)):
@@ -241,9 +290,25 @@ def resume_job(job_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Unable to resume job.")
     return {"status": "resumed", "job_id": job_id}
 
+@router.post("/jobs/{job_id}/stop")
+def stop_job(job_id: int, db: Session = Depends(get_db)):
+    success = job_scheduler.stop_job(db, job_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Unable to stop job.")
+    return {"status": "stopped", "job_id": job_id}
+
 @router.post("/jobs/{job_id}/cancel")
 def cancel_job(job_id: int, db: Session = Depends(get_db)):
     success = job_scheduler.cancel_job(db, job_id)
     if not success:
         raise HTTPException(status_code=400, detail="Unable to cancel job.")
     return {"status": "cancelled", "job_id": job_id}
+
+@router.delete("/jobs/{job_id}")
+def delete_job(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(AutomationJob).filter(AutomationJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    db.delete(job)
+    db.commit()
+    return {"status": "deleted", "id": job_id}

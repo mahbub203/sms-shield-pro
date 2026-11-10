@@ -7,12 +7,19 @@ SMS Shield PRO is an enterprise-grade cybersecurity SaaS web application and mac
 
 ## 🌟 Key Modules & Capabilities
 
-### 1. SMS Automation Center
+### 1. Advanced Automation Console
+- **Two Execution Modes**:
+  - **Mode A: Simulation Engine**: High-throughput synthetic SMS generation, sub-second event pacing (0.1s to 5.0s), burst processing, real-time throughput metrics (msg/s), measured processing latency, and simulated carrier delivery telemetry.
+  - **Mode B: Authorized SMS Gateway**: Integrated official SMS carrier API requiring verified consent (`OPTED_IN`), bounded test quantities (max 50/batch), strict rate pacing, and provider-confirmed delivery receipts.
+- **Console Interface**: Direct telephone input, message composer, template selector, permitted quantity presets (up to 10k synthetic events), sub-second interval sliders, immediate vs cloud scheduled dispatch, and working Start/Pause/Resume/Stop controls.
+- **Worker Controller**: Background worker health monitoring (status, uptime, throughput, task queue depth) with one-click Restart, Pause, and Resume capabilities.
+
+### 2. SMS Automation Center
 - **Recipient Management**: E.164 phone number validation, ownership verification via OTP tokens, consent status tracking (`OPTED_IN`, `PENDING`, `REVOKED`), and one-click consent revocation.
 - **Dynamic Message Composer**: Template editor with real-time GSM-7 vs UCS-2 Unicode detection. Full native support for **Bengali (বাংলা)** and international character sets with instant segment counter (160 chars for GSM-7, 70 chars for UCS-2), live smartphone message preview, and quota estimation.
 - **Automation Jobs**: Create controlled batch jobs targeting verified recipients with permitted test quotas, delivery rate caps, and scheduling modes.
 
-### 2. SMS Automation Scheduler & Cloud Worker
+### 3. SMS Automation Scheduler & Cloud Worker
 - **Modular SMS Execution Engine**:
   - `Mock Gateway`: In-memory sandbox for local simulated delivery without contacting real phone networks.
   - `Provider Sandbox`: Simulates carrier handoffs, latency, and delivery receipts (DLR).
@@ -164,7 +171,7 @@ sms-shield/
 │   │   ├── schemas.py      # Pydantic v2 data models
 │   │   ├── seed_data.py    # Realistic demo data seed script
 │   │   └── main.py         # Application lifecycle & middleware
-│   ├── tests/              # 22 automated pytest test cases
+│   ├── tests/              # 26 automated pytest test cases
 │   ├── requirements.txt
 │   └── run.py              # Server entry point
 ├── frontend/

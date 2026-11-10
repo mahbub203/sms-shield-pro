@@ -250,14 +250,25 @@ class UnicodeInspectResponse(BaseModel):
 
 class AutomationJobCreate(BaseModel):
     name: str
-    recipient_id: int
+    recipient_id: Optional[int] = None
+    recipient_phone: Optional[str] = None
+    recipient_name: Optional[str] = None
     template_id: Optional[int] = None
     custom_message: Optional[str] = None
-    target_count: int = Field(default=1, ge=1, le=50, description="Permitted test quantity")
-    interval_seconds: float = Field(default=10.0, ge=1.0, le=3600.0)
-    execution_mode: str = Field(default="MOCK_GATEWAY", description="MOCK_GATEWAY, PROVIDER_SANDBOX, AUTHORIZED_LIVE")
-    provider_rate_limit_per_min: int = Field(default=10, ge=1, le=60)
+    target_count: int = Field(default=10, ge=1, le=10000, description="Permitted quantity (up to 10k for simulation)")
+    interval_seconds: float = Field(default=1.0, ge=0.05, le=3600.0, description="Interval in seconds (sub-second supported for simulation)")
+    execution_mode: str = Field(default="SIMULATION_ENGINE", description="SIMULATION_ENGINE, MOCK_GATEWAY, PROVIDER_SANDBOX, AUTHORIZED_LIVE")
+    provider_rate_limit_per_min: int = Field(default=60, ge=1, le=600)
     scheduled_at: Optional[datetime] = None
+
+class WorkerHealthOut(BaseModel):
+    status: str
+    uptime_seconds: float
+    total_ticks_executed: int
+    current_throughput_per_sec: float
+    active_jobs_count: int
+    is_thread_alive: bool
+    queue_depth: int
 
 class AutomationJobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -309,3 +320,4 @@ class AutomationStatsOut(BaseModel):
     last_execution_time: Optional[datetime] = None
     worker_status: str
     emergency_lockdown_active: bool
+    current_throughput_per_sec: Optional[float] = 0.0

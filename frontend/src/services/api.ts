@@ -3,7 +3,7 @@ import {
   DetectionResult, MessageItem, MLMetrics, SimulationScenario, SimulationSession,
   BlockedSender, AllowedSender, ProtectionStatus, SecurityEvent, AnalyticsOverview,
   SenderAnalytics, SystemSetting, Recipient, MessageTemplate, UnicodeInspectResult,
-  AutomationJob, DeliveryEvent, AutomationStats
+  AutomationJob, DeliveryEvent, AutomationStats, WorkerHealth
 } from '../types';
 
 const BASE_URL = '/api/v1';
@@ -156,6 +156,10 @@ export const api = {
     return handleResponse<AutomationJob[]>(res);
   },
 
+  async getJobs(): Promise<AutomationJob[]> {
+    return this.getAutomationJobs();
+  },
+
   async createAutomationJob(payload: {
     name: string;
     recipient_id: number;
@@ -198,6 +202,14 @@ export const api = {
     await handleResponse(res);
   },
 
+  async stopJob(id: number): Promise<void> {
+    const res = await fetch(`${BASE_URL}/automation/jobs/${id}/stop`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    await handleResponse(res);
+  },
+
   async cancelJob(id: number): Promise<void> {
     const res = await fetch(`${BASE_URL}/automation/jobs/${id}/cancel`, {
       method: 'POST',
@@ -206,12 +218,60 @@ export const api = {
     await handleResponse(res);
   },
 
+  async deleteJob(id: number): Promise<void> {
+    const res = await fetch(`${BASE_URL}/automation/jobs/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    await handleResponse(res);
+  },
+
+  async quickDispatch(payload: any): Promise<any> {
+    const res = await fetch(`${BASE_URL}/automation/jobs/quick-dispatch`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
   // Scheduler & Telemetry
   async getSchedulerStats(): Promise<AutomationStats> {
     const res = await fetch(`${BASE_URL}/scheduler/stats`, {
       headers: getAuthHeaders()
     });
     return handleResponse<AutomationStats>(res);
+  },
+
+  async getWorkerHealth(): Promise<WorkerHealth> {
+    const res = await fetch(`${BASE_URL}/scheduler/worker/health`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse<WorkerHealth>(res);
+  },
+
+  async restartWorker(): Promise<{ status: string; worker_status: string }> {
+    const res = await fetch(`${BASE_URL}/scheduler/worker/restart`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  async pauseWorker(): Promise<{ status: string; worker_status: string }> {
+    const res = await fetch(`${BASE_URL}/scheduler/worker/pause`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  async resumeWorker(): Promise<{ status: string; worker_status: string }> {
+    const res = await fetch(`${BASE_URL}/scheduler/worker/resume`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(res);
   },
 
   async getDeliveries(limit: number = 50, status?: string): Promise<DeliveryEvent[]> {

@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  Terminal,
   SendHorizontal,
   CalendarClock,
   FlaskConical,
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'Operations',
       items: [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'advanced-console', label: 'Advanced Automation Console', icon: Terminal, badge: 'ENGINE' },
         { id: 'automation-center', label: 'SMS Automation Center', icon: SendHorizontal, badge: 'PRO' },
         { id: 'automation-scheduler', label: 'Automation Scheduler', icon: CalendarClock },
         { id: 'testing-lab', label: 'SMS Testing Lab', icon: FlaskConical },
