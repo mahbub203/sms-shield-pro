@@ -1,4 +1,6 @@
 # Environment & dependencies
+bin/
+*.exe
 venv/
 node_modules/
 dist/
